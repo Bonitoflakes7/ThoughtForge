@@ -1,0 +1,97 @@
+import { useEffect, useMemo, useState } from "react";
+import * as api from "./lib/api";
+import type { ForkType, Report, Thought, ThoughtDetail, User } from "./types";
+
+const forkLabels: Record<ForkType, string> = { support: "Builds on", challenge: "Challenges", refine: "Refines", extend: "Extends" };
+
+function timeAgo(value: string) {
+  const seconds = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
+function Initials({ name }: { name: string }) {
+  return <span className="avatar">{name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>;
+}
+
+function ReportButton({ thoughtId, compact = false }: { thoughtId: string; compact?: boolean }) {
+  const [reported, setReported] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const report = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const reason = window.prompt("Why are you reporting this thought?", "Inappropriate content");
+    if (!reason || busy || reported) return;
+    setBusy(true);
+    try { await api.reportThought(thoughtId, reason); setReported(true); }
+    catch (error) { window.alert(error instanceof Error ? error.message : "Could not submit report"); }
+    finally { setBusy(false); }
+  };
+  return <button className={compact ? "report-action compact-report" : "report-action"} onClick={report} disabled={busy || reported}>{reported ? "Reported" : "Report"}</button>;
+}
+
+function AuthScreen({ onAuth }: { onAuth: (user: User) => void }) {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [form, setForm] = useState({ username: "", display_name: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault(); setError(""); setBusy(true);
+    try { onAuth(mode === "login" ? await api.login(form.email, form.password) : await api.register(form)); }
+    catch (err) { setError(err instanceof Error ? err.message : "Something went wrong"); }
+    finally { setBusy(false); }
+  };
+  return <main className="auth-layout"><div className="auth-art"><div className="brand"><span className="brand-mark">✦</span> ThoughtForge</div><div className="auth-quote"><span>“</span><h1>Good thoughts<br /><em>change shape.</em></h1><p>A living space for ideas to be questioned, strengthened, and carried forward.</p></div><div className="orbit orbit-one" /><div className="orbit orbit-two" /></div><section className="auth-card"><p className="eyebrow">{mode === "login" ? "Welcome back" : "Join the thinking"}</p><h2>{mode === "login" ? "Enter the forge." : "Make your mark."}</h2><p className="muted">{mode === "login" ? "Pick up where your thinking left off." : "Create an account and start a thread."}</p><form onSubmit={submit}>{mode === "register" && <><label>Username<input required minLength={3} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="your_handle" /></label><label>Display name<input required value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="What people call you" /></label></>}<label>Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></label><label>Password<input required type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 8 characters" /></label>{error && <p className="form-error">{error}</p>}<button className="primary-button full-width" disabled={busy}>{busy ? "Opening..." : mode === "login" ? "Enter the forge ↗" : "Create account ↗"}</button></form><button className="switch-button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>{mode === "login" ? "New here? Create an account" : "Already have an account? Sign in"}</button></section></main>;
+}
+
+function ThoughtCard({ thought, onOpen, onLiked }: { thought: Thought; onOpen: () => void; onLiked: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const like = async (event: React.MouseEvent) => { event.stopPropagation(); if (busy) return; setBusy(true); try { await api.likeThought(thought.id); onLiked(); } catch { /* the detail view will surface auth errors */ } finally { setBusy(false); } };
+  return <article className="thought-card" onClick={onOpen}><div className="card-meta"><div className="author"><Initials name={thought.author.display_name} /><span><strong>{thought.author.display_name}</strong><small>@{thought.author.username} · {timeAgo(thought.created_at)}</small></span></div>{thought.fork_type && <span className="fork-tag">{forkLabels[thought.fork_type]}</span>}</div><h3>{thought.title}</h3><p>{thought.body}</p><div className="card-actions"><button onClick={like} disabled={busy}>↗ <span>{thought.like_count}</span></button><button onClick={(e) => { e.stopPropagation(); onOpen(); }}>◌ <span>{thought.comment_count}</span></button><button onClick={(e) => { e.stopPropagation(); onOpen(); }}>⑂ <span>{thought.fork_count}</span></button><ReportButton thoughtId={thought.id} /><span className="open-link">Open thought →</span></div></article>;
+}
+
+function Composer({ onCreated }: { onCreated: (thought: Thought) => void }) {
+  const [open, setOpen] = useState(false); const [title, setTitle] = useState(""); const [body, setBody] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); setBusy(true); setError(""); try { const thought = await api.createThought(title, body); onCreated(thought); setTitle(""); setBody(""); setOpen(false); } catch (err) { setError(err instanceof Error ? err.message : "Could not publish"); } finally { setBusy(false); } };
+  if (!open) return <button className="composer-collapsed" onClick={() => setOpen(true)}><Initials name="You" /><span>What are you thinking about?</span><b>+</b></button>;
+  return <form className="composer" onSubmit={submit}><div className="composer-heading"><span className="eyebrow">New thought</span><button type="button" className="close-button" onClick={() => setOpen(false)}>×</button></div><input autoFocus required maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Give the thought a clear edge" /><textarea required maxLength={10000} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Put the idea into words..." rows={5} />{error && <p className="form-error">{error}</p>}<div className="composer-footer"><span>{body.length}/10000</span><button className="primary-button" disabled={busy}>{busy ? "Publishing..." : "Publish thought ↗"}</button></div></form>;
+}
+
+function DetailPanel({ thought, onClose, onRefresh }: { thought: ThoughtDetail; onClose: () => void; onRefresh: () => void }) {
+  const [comment, setComment] = useState(""); const [forkOpen, setForkOpen] = useState(false); const [fork, setFork] = useState({ title: "", body: "", fork_type: "refine" as ForkType }); const [error, setError] = useState("");
+  const submitComment = async (event: React.FormEvent) => { event.preventDefault(); try { await api.addComment(thought.id, comment); setComment(""); onRefresh(); } catch (err) { setError(err instanceof Error ? err.message : "Could not comment"); } };
+  const submitFork = async (event: React.FormEvent) => { event.preventDefault(); try { await api.createFork(thought.id, fork); setFork({ title: "", body: "", fork_type: "refine" }); setForkOpen(false); onRefresh(); } catch (err) { setError(err instanceof Error ? err.message : "Could not fork"); } };
+  return <aside className="detail-panel"><div className="detail-top"><span className="eyebrow">Thought detail</span><button className="close-button" onClick={onClose}>×</button></div><div className="detail-scroll"><div className="detail-author"><Initials name={thought.author.display_name} /><div><strong>{thought.author.display_name}</strong><small>@{thought.author.username} · {timeAgo(thought.created_at)}</small></div></div><h2>{thought.title}</h2><p className="detail-body">{thought.body}</p><div className="detail-stats"><span>↗ {thought.like_count} likes</span><span>◌ {thought.comment_count} comments</span><span>⑂ {thought.fork_count} forks</span></div><div className="detail-section"><div className="section-heading"><h3>Fork the thought</h3><button className="small-button" onClick={() => setForkOpen(!forkOpen)}>{forkOpen ? "Close" : "+ Add perspective"}</button></div>{forkOpen && <form className="inline-form" onSubmit={submitFork}><input required value={fork.title} onChange={(e) => setFork({ ...fork, title: e.target.value })} placeholder="New perspective title" /><textarea required value={fork.body} onChange={(e) => setFork({ ...fork, body: e.target.value })} placeholder="How would you build on this?" rows={3} /><select value={fork.fork_type} onChange={(e) => setFork({ ...fork, fork_type: e.target.value as ForkType })}>{Object.entries(forkLabels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select><button className="primary-button">Publish fork ↗</button></form>}{thought.forks.length === 0 ? <p className="empty-copy">No branches yet. Be the first to take this idea somewhere new.</p> : <div className="fork-list">{thought.forks.map((fork) => <div className="fork-item" key={fork.id}><span className="branch-line" /><div><span className="fork-tag">{fork.fork_type ? forkLabels[fork.fork_type] : "Fork"}</span><strong>{fork.title}</strong><small>{fork.like_count} likes · by @{fork.author.username}</small></div></div>)}</div>}</div><div className="detail-section"><h3>Conversation <span>{thought.comments.length}</span></h3><form className="comment-form" onSubmit={submitComment}><textarea required value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Add something useful..." rows={2} /><button className="primary-button">Comment ↗</button></form>{error && <p className="form-error">{error}</p>}<div className="comment-list">{thought.comments.map((item) => <div className="comment-item" key={item.id}><Initials name={item.author.display_name} /><div><div className="comment-meta"><strong>{item.author.display_name}</strong><small>{timeAgo(item.created_at)}</small></div><p>{item.body}</p><button className="comment-like" onClick={async () => { await api.likeComment(item.id); onRefresh(); }}>↗ {item.like_count}</button></div></div>)}</div></div></div></aside>;
+}
+
+function AdminUserPanel() {
+  const [users, setUsers] = useState<User[]>([]); const [error, setError] = useState("");
+  const loadUsers = async () => { try { setUsers(await api.getAdminUsers()); } catch (err) { setError(err instanceof Error ? err.message : "Could not load users"); } };
+  useEffect(() => { loadUsers(); }, []);
+  const changeRole = async (id: string, role: User["role"]) => { try { await api.updateUserRole(id, role); await loadUsers(); } catch (err) { setError(err instanceof Error ? err.message : "Could not update role"); } };
+  const toggleStatus = async (item: User) => { try { await api.updateUserStatus(item.id, !item.is_active); await loadUsers(); } catch (err) { setError(err instanceof Error ? err.message : "Could not update account"); } };
+  return <section className="admin-panel"><div className="desk-heading"><div><p className="eyebrow">Admin control</p><h1>People & roles<span>.</span></h1><p className="muted">Shape who can care for the room.</p></div></div>{error && <p className="form-error page-error">{error}</p>}<div className="admin-user-list">{users.map((item) => <div className="admin-user-row" key={item.id}><div className="admin-user-identity"><Initials name={item.display_name} /><div><strong>{item.display_name}</strong><small>@{item.username} · {item.email}</small></div></div><select value={item.role} onChange={(e) => changeRole(item.id, e.target.value as User["role"])}><option value="user">User</option><option value="moderator">Moderator</option><option value="admin">Admin</option></select><button className="account-toggle" onClick={() => toggleStatus(item)}>Toggle account</button></div>)}</div></section>;
+}
+
+function ModerationDesk() {
+  const [reports, setReports] = useState<Report[]>([]); const [openCount, setOpenCount] = useState(0); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const load = async () => { setLoading(true); try { const result = await api.getReports(); setReports(result.reports); setOpenCount(result.open_count); } catch (err) { setError(err instanceof Error ? err.message : "Could not load reports"); } finally { setLoading(false); } };
+  useEffect(() => { load(); }, []);
+  const resolve = async (report: Report, action: "dismiss" | "hide" | "deactivate_user") => { try { await api.resolveReport(report.id, action, action === "hide" ? "Content hidden after moderation review" : undefined); await load(); } catch (err) { setError(err instanceof Error ? err.message : "Could not resolve report"); } };
+  return <div className="moderation-desk"><div className="desk-heading"><div><p className="eyebrow">Trust & safety</p><h1>Moderation desk<span>.</span></h1><p className="muted">Review the signal. Protect the room.</p></div><div className="open-count"><strong>{openCount}</strong><small>open reports</small></div></div>{error && <p className="form-error page-error">{error}</p>}{loading ? <div className="loading-state">Loading the queue<span>···</span></div> : reports.length === 0 ? <div className="empty-state"><span>✓</span><h2>Clear signal.</h2><p>There are no open reports to review.</p></div> : <div className="report-list">{reports.map((report) => <article className="report-card" key={report.id}><div className="report-card-top"><span className="fork-tag">{report.target_type} report</span><small>{timeAgo(report.created_at)}</small></div><h3>{report.reason}</h3><p>{report.details || "No additional context was provided."}</p><div className="report-target"><span>Target</span><code>{report.target_id}</code></div><div className="report-actions"><button onClick={() => resolve(report, "dismiss")}>Dismiss</button><button className="hide-action" onClick={() => resolve(report, "hide")}>Hide content</button><button className="danger-action" onClick={() => resolve(report, "deactivate_user")}>Deactivate author</button></div></article>)}</div>}</div>;
+}
+
+function App() {
+  const [user, setUser] = useState<User | null>(null); const [thoughts, setThoughts] = useState<Thought[]>([]); const [sort, setSort] = useState<"top" | "recent">("top"); const [selected, setSelected] = useState<ThoughtDetail | null>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [view, setView] = useState<"feed" | "moderation">("feed");
+  const loadFeed = async () => { setLoading(true); setError(""); try { setThoughts(await api.getThoughts(sort)); } catch (err) { setError(err instanceof Error ? err.message : "Could not load the feed"); } finally { setLoading(false); } };
+  useEffect(() => { if (api.getToken()) api.getCurrentUser().then(setUser).catch(() => api.clearToken()); }, []);
+  useEffect(() => { if (user) loadFeed(); }, [user, sort]);
+  const openThought = async (id: string) => { try { setSelected(await api.getThought(id)); } catch (err) { setError(err instanceof Error ? err.message : "Could not open thought"); } };
+  const refreshSelected = async () => { if (selected) setSelected(await api.getThought(selected.id)); await loadFeed(); };
+  const feedLabel = useMemo(() => sort === "top" ? "Signal rising" : "Fresh thinking", [sort]);
+  if (!user) return <AuthScreen onAuth={setUser} />;
+  return <main className="app-shell"><header className="app-header"><div className="brand"><span className="brand-mark">✦</span> ThoughtForge</div><div className="header-center"><span className="live-mark" /> The thinking room</div><div className="user-menu"><Initials name={user.display_name} /><span>{user.display_name}</span><button onClick={() => { api.clearToken(); setUser(null); }}>Log out</button></div></header><div className="app-layout"><nav className="side-nav"><div className="nav-label">Navigate</div><button className={`nav-item ${view === "feed" ? "active" : ""}`} onClick={() => setView("feed")}><span>◈</span> Thought stream</button><button className="nav-item"><span>◎</span> Following <i>soon</i></button><button className="nav-item"><span>⌕</span> Explore <i>soon</i></button>{(user.role === "moderator" || user.role === "admin") && <button className={`nav-item ${view === "moderation" ? "active" : ""}`} onClick={() => setView("moderation")}><span>♢</span> Moderation desk</button>}<div className="nav-label space-top">Your space</div><button className="nav-item"><span>✦</span> Saved thoughts <i>soon</i></button><button className="nav-item"><span>◌</span> Messages <i>soon</i></button><div className="side-note"><span className="eyebrow">The premise</span><p>Every thought is a starting point. The best ideas are the ones that survive contact with other minds.</p></div></nav><section className="feed-area">{view === "moderation" ? <>{user.role === "admin" && <AdminUserPanel />}<ModerationDesk /></> : <><div className="feed-heading"><div><p className="eyebrow">{feedLabel}</p><h1>Thought stream<span>.</span></h1><p className="muted">Ideas worth pausing for.</p></div><div className="sort-tabs"><button className={sort === "top" ? "selected" : ""} onClick={() => setSort("top")}>Top signal</button><button className={sort === "recent" ? "selected" : ""} onClick={() => setSort("recent")}>Just in</button></div></div><Composer onCreated={(thought) => { setThoughts([thought, ...thoughts]); setSelected(null); }} />{error && <p className="form-error page-error">{error}</p>}{loading ? <div className="loading-state">Tuning into the signal<span>···</span></div> : thoughts.length === 0 ? <div className="empty-state"><span>✦</span><h2>The room is quiet.</h2><p>Start the first thought and give everyone something to build on.</p></div> : <div className="thought-list">{thoughts.map((thought) => <ThoughtCard key={thought.id} thought={thought} onOpen={() => openThought(thought.id)} onLiked={loadFeed} />)}</div>}</>}</section>{selected && view === "feed" && <DetailPanel thought={selected} onClose={() => setSelected(null)} onRefresh={refreshSelected} />}</div></main>;
+}
+
+export default App;
