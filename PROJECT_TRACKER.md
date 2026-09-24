@@ -103,3 +103,4 @@ This file is the source of truth for the build phases, completed work, decisions
 - Added the Phase 3 frontend feed, auth entry, composer, detail panel, comments, forks, and engagement controls.
 - Added Phase 4 reports, moderation queue, hide/dismiss/restore actions, audit logs, and admin-only deactivation.
 - Added protected admin APIs and the frontend People & roles panel.
+- Added explicit Active/Deactivated account badges, row styling, and state-aware Activate/Deactivate labels.
