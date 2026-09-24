@@ -30,7 +30,11 @@ class ChatConnectionManager:
     async def broadcast(self, conversation_id: UUID, payload: dict[str, Any], exclude: WebSocket | None = None) -> None:
         for websocket in list(self.connections.get(conversation_id, set())):
             if websocket is not exclude:
-                await websocket.send_text(json.dumps(payload, default=str))
+                try:
+                    await websocket.send_text(json.dumps(payload, default=str))
+                except Exception:
+                    # A browser may close between the snapshot and the send.
+                    continue
 
 
 chat_manager = ChatConnectionManager()

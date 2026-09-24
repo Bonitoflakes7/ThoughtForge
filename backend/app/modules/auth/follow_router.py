@@ -3,6 +3,7 @@ from sqlalchemy import delete, select
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.modules.auth.models import Follow, User
+from app.modules.notifications.models import Notification, NotificationType
 
 router = APIRouter(prefix="/users", tags=["follows"])
 
@@ -19,6 +20,10 @@ async def follow_user(username: str, user: CurrentUser, session: DbSession) -> N
     )
     if exists is None:
         session.add(Follow(follower_id=user.id, following_id=target.id))
+        session.add(Notification(
+            user_id=target.id, actor_id=user.id, type=NotificationType.FOLLOW,
+            message=f"{user.display_name} started following you", target_id=user.id,
+        ))
         await session.commit()
 
 

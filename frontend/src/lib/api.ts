@@ -1,4 +1,4 @@
-import type { Comment, Conversation, ForkType, Message, Report, Thought, ThoughtDetail, User } from "../types";
+import type { Comment, Conversation, ForkType, Message, NotificationItem, Report, Thought, ThoughtDetail, User } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1";
 const TOKEN_KEY = "thoughtforge_access_token";
@@ -62,3 +62,6 @@ export const getMessages = (id: string) => request<Message[]>(`/chat/conversatio
 export const sendChatMessage = (id: string, body: string) => request<Message>(`/chat/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ body }) });
 export const markConversationRead = (id: string) => request<void>(`/chat/conversations/${id}/read`, { method: "POST" });
 export const websocketUrl = (id: string) => `${(import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1").replace(/^http/, "ws").replace("/api/v1", "")}/ws/chat/${id}`;
+export const searchThoughts = (query: string) => request<Thought[]>(`/thoughts/search?q=${encodeURIComponent(query)}`);
+export const getNotifications = () => request<{ items: NotificationItem[]; unread_count: number }>("/notifications");
+export const markAllNotificationsRead = () => request<void>("/notifications/read-all", { method: "POST" });

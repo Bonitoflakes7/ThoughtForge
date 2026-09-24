@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import desc, delete, select
+from sqlalchemy import desc, delete, or_, select
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.modules.auth.models import User
@@ -16,6 +16,7 @@ from app.modules.thoughts.schemas import (
     ThoughtResponse,
     ThoughtUpdateRequest,
 )
+from app.modules.notifications.models import Notification, NotificationType
 
 router = APIRouter(prefix="/thoughts", tags=["thoughts"])
 
@@ -86,6 +87,19 @@ async def list_thoughts(
     return [thought_response(thought) for thought in thoughts]
 
 
+@router.get("/search", response_model=list[ThoughtResponse])
+async def search_thoughts(
+    session: DbSession, q: str = Query(min_length=2, max_length=100),
+    limit: int = Query(default=30, ge=1, le=50),
+) -> list[ThoughtResponse]:
+    query = f"%{q.strip()}%"
+    thoughts = (await session.scalars(select(Thought).where(
+        Thought.is_deleted.is_(False), Thought.parent_thought_id.is_(None),
+        or_(Thought.title.ilike(query), Thought.body.ilike(query)),
+    ).order_by(desc(Thought.like_count), desc(Thought.created_at)).limit(limit))).all()
+    return [thought_response(thought) for thought in thoughts]
+
+
 @router.get("/{thought_id}", response_model=ThoughtDetailResponse)
 async def get_thought(thought_id: UUID, session: DbSession) -> ThoughtDetailResponse:
     thought = await get_thought_or_404(session, thought_id)
@@ -146,6 +160,11 @@ async def fork_thought(
         fork_type=request.fork_type,
     )
     parent.fork_count += 1
+    if parent.author_id != user.id:
+        session.add(Notification(
+            user_id=parent.author_id, actor_id=user.id, type=NotificationType.FORK,
+            message=f"{user.display_name} forked your thought", target_id=parent.id,
+        ))
     session.add(fork)
     await session.commit()
     await session.refresh(fork)
@@ -160,6 +179,11 @@ async def create_comment(
     thought = await get_thought_or_404(session, thought_id)
     comment = Comment(thought_id=thought.id, author_id=user.id, body=request.body)
     thought.comment_count += 1
+    if thought.author_id != user.id:
+        session.add(Notification(
+            user_id=thought.author_id, actor_id=user.id, type=NotificationType.COMMENT,
+            message=f"{user.display_name} commented on your thought", target_id=thought.id,
+        ))
     session.add(comment)
     await session.commit()
     await session.refresh(comment)
@@ -176,6 +200,11 @@ async def like_thought(thought_id: UUID, user: CurrentUser, session: DbSession) 
     if existing is None:
         session.add(ThoughtLike(thought_id=thought.id, user_id=user.id))
         thought.like_count += 1
+        if thought.author_id != user.id:
+            session.add(Notification(
+                user_id=thought.author_id, actor_id=user.id, type=NotificationType.LIKE,
+                message=f"{user.display_name} liked your thought", target_id=thought.id,
+            ))
         await session.commit()
 
 

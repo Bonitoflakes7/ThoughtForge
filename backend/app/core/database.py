@@ -8,6 +8,7 @@ from app.modules.auth import models as _auth_models  # noqa: F401
 from app.modules.thoughts import models as _thought_models  # noqa: F401
 from app.modules.moderation import models as _moderation_models  # noqa: F401
 from app.modules.chat import models as _chat_models  # noqa: F401
+from app.modules.notifications import models as _notification_models  # noqa: F401
 
 settings = get_settings()
 engine = create_async_engine(settings.database_url, pool_pre_ping=True)

@@ -68,8 +68,9 @@ This file is the source of truth for the build phases, completed work, decisions
 
 ### Phase 6 — Product refinement
 
-- [ ] Notifications
-- [ ] Search
+- [x] In-app notifications for likes, comments, forks, and follows
+- [x] Thought search API and Explore UI
+- [x] Notifications UI with unread state and mark-all-read
 - [ ] Reactions and attachments
 - [ ] Shared thoughts in chat
 - [ ] Recommendation and reputation systems
@@ -107,3 +108,5 @@ This file is the source of truth for the build phases, completed work, decisions
 - Added protected admin APIs and the frontend People & roles panel.
 - Added explicit Active/Deactivated account badges, row styling, and state-aware Activate/Deactivate labels.
 - Added Phase 5 chat models, direct/group conversation APIs, message history, WebSocket events, and chat frontend workspace.
+- Fixed live read receipts so recipient reads are persisted, broadcast, and rendered as `Read` for the sender; two-client WebSocket smoke test passed.
+- Started Phase 6 with notifications, search, Explore, and notification center.

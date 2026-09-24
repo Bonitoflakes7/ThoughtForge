@@ -86,6 +86,14 @@ To see the frontend moderation desk, the authenticated user must have the `moder
 
 The WebSocket endpoint is `/ws/chat/{conversation_id}?token=<access_token>`. REST history remains available at `/api/v1/chat/conversations/{conversation_id}/messages`.
 
+## Phase 6: discovery and notifications
+
+- Use **Explore** to search thought titles and bodies.
+- Use **Notifications** to see likes, comments, forks, and follows.
+- Unread notifications are highlighted and can be cleared with **Mark all read**.
+- Search API: `GET /api/v1/thoughts/search?q=...`
+- Notifications API: `GET /api/v1/notifications`
+
 ### Local infrastructure
 
 ```powershell
