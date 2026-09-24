@@ -77,10 +77,12 @@ This file is the source of truth for the build phases, completed work, decisions
 
 ### Phase 7 — Production hardening
 
-- [ ] Rate limiting and abuse controls
+- [~] Rate limiting and abuse controls — baseline headers added; request throttling remains
 - [ ] Redis-backed scaling
-- [ ] Observability
-- [ ] CI/CD
+- [x] Observability baseline: request IDs and structured request logs
+- [x] CI/CD checks
+- [x] Readiness health check
+- [x] Container packaging
 - [ ] Backups and recovery
 - [ ] Security review
 
@@ -110,3 +112,4 @@ This file is the source of truth for the build phases, completed work, decisions
 - Added Phase 5 chat models, direct/group conversation APIs, message history, WebSocket events, and chat frontend workspace.
 - Fixed live read receipts so recipient reads are persisted, broadcast, and rendered as `Read` for the sender; two-client WebSocket smoke test passed.
 - Started Phase 6 with notifications, search, Explore, and notification center.
+- Started Phase 7 with readiness checks, security headers, request logging, Docker packaging, and CI workflows.

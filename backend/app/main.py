@@ -1,7 +1,13 @@
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.api.health import router as health_router
 from app.core.config import get_settings
@@ -15,6 +21,22 @@ from app.modules.chat.websocket import chat_websocket
 from app.modules.notifications.router import router as notifications_router
 
 settings = get_settings()
+logger = logging.getLogger("thoughtforge.request")
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        started = time.perf_counter()
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+        logger.info("request method=%s path=%s status=%s duration_ms=%s request_id=%s", request.method, request.url.path, response.status_code, elapsed_ms, request_id)
+        return response
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -26,6 +48,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name, version="0.1.0", description="API for the ThoughtForge social thinking platform.", lifespan=lifespan
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
