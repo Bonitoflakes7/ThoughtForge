@@ -54,3 +54,7 @@ export type Report = {
   created_at: string;
   resolved_by_id: string | null;
 };
+
+export type ConversationMember = { id: string; username: string; display_name: string; is_admin: boolean; last_read_at: string | null };
+export type Conversation = { id: string; type: "direct" | "group"; name: string | null; members: ConversationMember[]; last_message_at: string | null; unread_count: number };
+export type Message = { id: string; conversation_id: string; sender_id: string; sender_username: string; sender_display_name: string; body: string; created_at: string; edited_at: string | null; is_deleted: boolean; read_by_count: number };

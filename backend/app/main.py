@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
@@ -10,6 +10,8 @@ from app.modules.auth.follow_router import router as follow_router
 from app.modules.auth.router import router as auth_router
 from app.modules.thoughts.router import router as thoughts_router
 from app.modules.moderation.router import router as moderation_router
+from app.modules.chat.router import router as chat_router
+from app.modules.chat.websocket import chat_websocket
 
 settings = get_settings()
 
@@ -37,6 +39,12 @@ app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(follow_router, prefix=settings.api_prefix)
 app.include_router(thoughts_router, prefix=settings.api_prefix)
 app.include_router(moderation_router, prefix=settings.api_prefix)
+app.include_router(chat_router, prefix=settings.api_prefix)
+
+
+@app.websocket("/ws/chat/{conversation_id}")
+async def chat_socket(websocket: WebSocket, conversation_id: str):
+    await chat_websocket(websocket, conversation_id)
 
 
 @app.get("/")

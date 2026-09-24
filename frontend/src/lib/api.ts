@@ -1,4 +1,4 @@
-import type { Comment, ForkType, Report, Thought, ThoughtDetail, User } from "../types";
+import type { Comment, Conversation, ForkType, Message, Report, Thought, ThoughtDetail, User } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1";
 const TOKEN_KEY = "thoughtforge_access_token";
@@ -55,3 +55,10 @@ export const resolveReport = (id: string, action: "dismiss" | "hide" | "restore"
 export const getAdminUsers = () => request<User[]>("/admin/users");
 export const updateUserRole = (id: string, role: User["role"]) => request<User>(`/admin/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) });
 export const updateUserStatus = (id: string, is_active: boolean) => request<User>(`/admin/users/${id}/status`, { method: "PATCH", body: JSON.stringify({ is_active }) });
+export const getConversations = () => request<Conversation[]>("/chat/conversations");
+export const createDirectConversation = (username: string) => request<Conversation>(`/chat/direct/${encodeURIComponent(username)}`, { method: "POST" });
+export const createGroupConversation = (name: string, usernames: string[]) => request<Conversation>("/chat/groups", { method: "POST", body: JSON.stringify({ name, usernames }) });
+export const getMessages = (id: string) => request<Message[]>(`/chat/conversations/${id}/messages`);
+export const sendChatMessage = (id: string, body: string) => request<Message>(`/chat/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ body }) });
+export const markConversationRead = (id: string) => request<void>(`/chat/conversations/${id}/read`, { method: "POST" });
+export const websocketUrl = (id: string) => `${(import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1").replace(/^http/, "ws").replace("/api/v1", "")}/ws/chat/${id}`;

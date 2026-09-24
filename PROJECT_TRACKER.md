@@ -58,11 +58,13 @@ This file is the source of truth for the build phases, completed work, decisions
 
 ### Phase 5 — Chat foundation
 
-- [ ] Direct conversations
-- [ ] Group conversations
-- [ ] WebSocket messaging
-- [ ] Presence and typing indicators
-- [ ] Read receipts
+- [x] Direct conversations
+- [x] Group conversations
+- [x] WebSocket messaging
+- [x] Presence and typing indicators
+- [x] Read receipts
+- [x] Chat frontend workspace
+- [~] Two-browser WebSocket verification pending user testing
 
 ### Phase 6 — Product refinement
 
@@ -104,3 +106,4 @@ This file is the source of truth for the build phases, completed work, decisions
 - Added Phase 4 reports, moderation queue, hide/dismiss/restore actions, audit logs, and admin-only deactivation.
 - Added protected admin APIs and the frontend People & roles panel.
 - Added explicit Active/Deactivated account badges, row styling, and state-aware Activate/Deactivate labels.
+- Added Phase 5 chat models, direct/group conversation APIs, message history, WebSocket events, and chat frontend workspace.

@@ -72,6 +72,20 @@ Reports can be submitted through `POST /api/v1/thoughts/{thought_id}/report` or 
 
 To see the frontend moderation desk, the authenticated user must have the `moderator` or `admin` role. The desk appears in the left navigation and can dismiss reports, hide content, or request author deactivation.
 
+## Phase 5: chat smoke test
+
+1. Start the backend and frontend.
+2. Log in as one user and open **Messages**.
+3. Enter another username in **Message @username**.
+4. Open the conversation and send a message.
+5. Log in as the second user in another browser/incognito window.
+6. Open **Messages** and verify the message arrives live.
+7. Type in the composer and verify the other window receives the typing indicator.
+8. Create a group by entering a group name and comma-separated usernames.
+9. Select a conversation, then verify sent/read state updates when the other user opens it.
+
+The WebSocket endpoint is `/ws/chat/{conversation_id}?token=<access_token>`. REST history remains available at `/api/v1/chat/conversations/{conversation_id}/messages`.
+
 ### Local infrastructure
 
 ```powershell
